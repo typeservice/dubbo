@@ -1,0 +1,29 @@
+{
+  "name": "@typeservice/dubbo",
+  "version": "1.0.0",
+  "description": "A worker frameworker using dubbo for typeservice.",
+  "main": "dist/index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/typeservice/dubbo.git"
+  },
+  "scripts": {
+    "dev": "ts-node test/index.ts",
+    "build": "rm -rf dist/ && tsc -d"
+  },
+  "keywords": [
+    "template",
+    "nelts"
+  ],
+  "author": "cevio",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/typeservice/dubbo/issues"
+  },
+  "homepage": "https://github.com/typeservice/dubbo#readme",
+  "dependencies": {
+    "@typeservice/core": "^1.0.1",
+    "dubbo.ts": "^1.0.69",
+    "inversify": "^5.0.1"
+  }
+}
