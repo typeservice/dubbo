@@ -1,4 +1,4 @@
-# @typeservice/koa
+# @typeservice/dubbo
 
 It is a service architecture based on dubbo. 
 
