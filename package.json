@@ -1,6 +1,6 @@
 {
   "name": "@typeservice/dubbo",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A worker frameworker using dubbo for typeservice.",
   "main": "dist/index.js",
   "repository": {
@@ -22,8 +22,12 @@
   },
   "homepage": "https://github.com/typeservice/dubbo#readme",
   "dependencies": {
-    "@typeservice/core": "^1.0.1",
-    "dubbo.ts": "^1.0.69",
+    "@typeservice/core": "^1.0.5",
+    "dubbo.ts": "^1.0.70",
+    "globby": "^10.0.1",
     "inversify": "^5.0.1"
+  },
+  "devDependencies": {
+    "@types/globby": "^9.1.0"
   }
 }

@@ -12,7 +12,7 @@ type COMPONENTS = {
 class UserInfo {
   @rpc.Method
   @rpc.Swagger.Summary('测试')
-  @rpc.Swagger.RequestSchema({
+  @rpc.Swagger.Request({
     $class: 'com.mifa.stib.common.RpcData',
     $schema: {
       type: 'object',
@@ -69,13 +69,12 @@ class UserInfo {
       required: ['headers', 'user']
     }
   })
-  test(@rpc.Req.PARAMETER(0) args: any, @rpc.Req.ID id: number) {
-    console.log(args);
+  test(@rpc.ctx.param(0) args: any, @rpc.ctx.id id: number) {
     return id;
   }
 }
 
-const dubbo = new Dubbo<COMPONENTS>({
+const dubbo = new Dubbo({
   provider: {
     application: 'stib.test',
     dubbo_version: '2.0.2',
@@ -87,6 +86,6 @@ const dubbo = new Dubbo<COMPONENTS>({
   swagger: 'stib'
 });
 
-dubbo.bind('userinfo', UserInfo);
+dubbo.bind<COMPONENTS['userinfo']>('userinfo', UserInfo);
 
 dubbo.listen();

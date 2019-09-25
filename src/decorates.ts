@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { ProviderServiceChunkMethodParametersSchema, ProviderContext } from 'dubbo.ts';
-import { ComposeMiddleware, Compose, ComposedMiddleware } from '@typeservice/core';
+import { ComposeMiddleware, Compose } from '@typeservice/core';
 
 type ContextRequestType = ProviderContext['req'];
 
@@ -67,12 +67,12 @@ export function Version(version?: string): ClassDecorator {
 }
 
 export const Swagger = {
-  RequestSchema(...schemas: ProviderServiceChunkMethodParametersSchema[]): MethodDecorator {
+  Request(...schemas: ProviderServiceChunkMethodParametersSchema[]): MethodDecorator {
     return (target, property, descriptor) => {
       Reflect.defineMetadata(NAMESPACE.SWAGGER_REQUEST_SCHEMA, schemas, descriptor.value);
     }
   },
-  ResponseSchema(schema: any): MethodDecorator {
+  Response(schema: any): MethodDecorator {
     return (target, property, descriptor) => {
       Reflect.defineMetadata(NAMESPACE.SWAGGER_RESPONSE_SCHEMA, schema, descriptor.value);
     }
@@ -96,45 +96,49 @@ export class ParameterMetadata {
       return req.parameters[index];
     });
   }
-}
 
-export const Req = {
-  ID(target: Object, property: string | symbol, index: number) {
-    const clazz = target.constructor.prototype[property];
-    setParameterMetaData(clazz, metadata => metadata.set(index, req => req.requestId));
-  },
-  DUBBO_VERSION(target: Object, property: string | symbol, index: number) {
-    const clazz = target.constructor.prototype[property];
-    setParameterMetaData(clazz, metadata => metadata.set(index, req => req.dubboVersion));
-  },
-  INTERFACE_NAME(target: Object, property: string | symbol, index: number) {
-    const clazz = target.constructor.prototype[property];
-    setParameterMetaData(clazz, metadata => metadata.set(index, req => req.interfaceName));
-  },
-  INTERFACE_VERSION(target: Object, property: string | symbol, index: number) {
-    const clazz = target.constructor.prototype[property];
-    setParameterMetaData(clazz, metadata => metadata.set(index, req => req.interfaceVersion));
-  },
-  METHOD(target: Object, property: string | symbol, index: number) {
-    const clazz = target.constructor.prototype[property];
-    setParameterMetaData(clazz, metadata => metadata.set(index, req => req.method));
-  },
-  ATTACHMENTS(target: Object, property: string | symbol, index: number) {
-    const clazz = target.constructor.prototype[property];
-    setParameterMetaData(clazz, metadata => metadata.set(index, req => req.attachments));
-  },
-  PARAMETER(i: number): ParameterDecorator {
-    return (target, property, index) => {
-      const clazz = target.constructor.prototype[property];
-      setParameterMetaData(clazz, metadata => metadata.set(index, req => req.parameters[i]));
+  static bind(target: Object) {
+    let meta: ParameterMetadata;
+    if (!Reflect.hasMetadata(NAMESPACE.REQ, target)) {
+      meta = new ParameterMetadata();
+      Reflect.defineMetadata(NAMESPACE.REQ, meta, target);
+    } else {
+      meta = Reflect.getMetadata(NAMESPACE.REQ, target) as ParameterMetadata;
     }
+    return meta;
   }
 }
 
-export function setParameterMetaData(clazz: any, callback: (value: ParameterMetadata) => void) {
-  if (!Reflect.hasMetadata(NAMESPACE.REQ, clazz)) Reflect.defineMetadata(NAMESPACE.REQ, new ParameterMetadata(), clazz);
-  const value = Reflect.getMetadata(NAMESPACE.REQ, clazz) as ParameterMetadata;
-  callback(value);
+type AttachmentItemType = ContextRequestType['attachments'][keyof ContextRequestType['attachments']];
+
+export const ctx = {
+  id: setParameterMetaData<ContextRequestType['requestId']>(req => req.requestId),
+  dv: setParameterMetaData<ContextRequestType['dubboVersion']>(req => req.dubboVersion),
+  name: setParameterMetaData<ContextRequestType['interfaceName']>(req => req.interfaceName),
+  method: setParameterMetaData<ContextRequestType['method']>(req => req.method),
+  version: setParameterMetaData<ContextRequestType['interfaceVersion']>(req => req.interfaceVersion),
+  attachments: setParameterMetaData<ContextRequestType['attachments']>(req => req.attachments),
+  attachment: setFunctionalParameterMetaData<AttachmentItemType>((req, key: keyof ContextRequestType['attachments']) => req.attachments[key]),
+  params: setParameterMetaData<ContextRequestType['parameters']>(req => req.parameters),
+  param: setFunctionalParameterMetaData((req, index: number) => req.parameters[index]),
+}
+
+export function setParameterMetaData<T = any>(callback: (req: ContextRequestType) => T): ParameterDecorator {
+  return (target, property, index) => {
+    const clazz = target.constructor.prototype[property];
+    const meta = ParameterMetadata.bind(clazz);
+    meta.set(index, callback);
+  }
+}
+
+export function setFunctionalParameterMetaData<T = any>(callback: (req: ContextRequestType, ...args: any[]) => T) {
+  return (...args: any[]): ParameterDecorator => {
+    return (target, property, index) => {
+      const clazz = target.constructor.prototype[property];
+      const meta = ParameterMetadata.bind(clazz);
+      meta.set(index, (req) => callback(req, ...args));
+    }
+  }
 }
 
 export class MiddlewareMetadata<T extends ProviderContext = ProviderContext>{

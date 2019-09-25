@@ -1,5 +1,7 @@
+import * as path from 'path';
+import * as globby from 'globby';
 import { Container, interfaces } from 'inversify';
-import { WorkerFactory, Logger, ProcessException } from '@typeservice/core';
+import { WorkerFactory, Logger, ProcessException, RequireFileWithDefault } from '@typeservice/core';
 import * as rpc from './decorates';
 import { 
   Provider, 
@@ -15,12 +17,12 @@ import {
   ProviderServiceChunkMethodParametersOptions,
 } from 'dubbo.ts';
 
-type DubboOptionsByProviderIncluded = Pick<ProviderInitOptions, 'application' | 'dubbo_version' | 'port' | 'heartbeat'>;
+export type DubboOptionsByProviderIncluded = Pick<ProviderInitOptions, 'application' | 'dubbo_version' | 'port' | 'heartbeat'>;
 type DubboOptionsByProviderExcluded = Pick<ProviderInitOptions, 'pid' | 'registry' | 'logger'>;
-type DubboOptionsByConsumerIncluded = Pick<ConsumerServiceInitOptions, 'application' | 'dubbo_version' | 'pickTimeout'>;
+export type DubboOptionsByConsumerIncluded = Pick<ConsumerServiceInitOptions, 'application' | 'dubbo_version' | 'pickTimeout'>;
 type DubboOptionsByConsumerExcluded = Pick<ConsumerServiceInitOptions, 'pid' | 'registry' | 'logger'>;
 
-type DubboOptions = {
+export type DubboOptions = {
   provider: DubboOptionsByProviderIncluded,
   consumer?: DubboOptionsByConsumerIncluded,
   registry: RegistryInitOptions,
@@ -30,15 +32,11 @@ type DubboOptions = {
   version?: string,
 }
 
-type DubboServiceList = {
-  [name: string]: any;
-}
-
 export {
   rpc,
 }
 
-export default class Dubbo<T extends DubboServiceList = {}> extends WorkerFactory {
+export default class Dubbo extends WorkerFactory {
   public readonly provider: Provider;
   public readonly consumer: Consumer;
   public readonly registry: Registry;
@@ -75,16 +73,31 @@ export default class Dubbo<T extends DubboServiceList = {}> extends WorkerFactor
     this.provider.on('data', this.onData.bind(this));
   }
 
-  bind(name: keyof T, target: interfaces.Newable<T[keyof T]>) {
+  scan(dir: string, cwd: string = process.cwd()) {
+    const dictionary = path.resolve(cwd, dir);
+    const dictionaries = globby.sync([
+      '**/*.ts',
+      '**/*.js',
+      '!**/*.d.ts'
+    ], {
+      cwd: dictionary
+    });
+    dictionaries.forEach(dic => {
+      const clazz = RequireFileWithDefault<interfaces.Newable<any>>(dic, dictionary);
+      this.bind(clazz.name, clazz);
+    });
+  }
+
+  bind<T = any>(name: string, target: interfaces.Newable<T>) {
     const properties = Object.getOwnPropertyNames(target.prototype);
     const methods: string[] = [], swaggers: ProviderServiceChunkMethodParametersOptions[] = [];
     const interfacename = Reflect.getMetadata(rpc.NAMESPACE.INTERFACE, target) as string;
     const version = Reflect.getMetadata(rpc.NAMESPACE.VERSION, target) as string;
     const group = Reflect.getMetadata(rpc.NAMESPACE.GROUP, target) as string;
-    const deplay = Reflect.getMetadata(rpc.NAMESPACE.DELAY, target);
-    const retries = Reflect.getMetadata(rpc.NAMESPACE.RETRIES, target);
-    const timeout = Reflect.getMetadata(rpc.NAMESPACE.TIMEOUT, target);
-    const description = Reflect.getMetadata(rpc.NAMESPACE.DESCRIPTION, target);
+    const deplay = Reflect.getMetadata(rpc.NAMESPACE.DELAY, target) as number;
+    const retries = Reflect.getMetadata(rpc.NAMESPACE.RETRIES, target) as number;
+    const timeout = Reflect.getMetadata(rpc.NAMESPACE.TIMEOUT, target) as number;
+    const description = Reflect.getMetadata(rpc.NAMESPACE.DESCRIPTION, target) as string;
     for (let i = 0; i < properties.length; i++) {
       const property = properties[i];
       const that = target.prototype[property];
@@ -117,7 +130,7 @@ export default class Dubbo<T extends DubboServiceList = {}> extends WorkerFactor
       description,
       parameters: swaggers,
     })
-    return this.container.bind<T[keyof T]>(name as string).to(target);
+    return this.container.bind<T>(name).to(target);
   }
 
   private async setup() {
