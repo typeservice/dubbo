@@ -180,8 +180,8 @@ export default class Dubbo extends WorkerFactory {
     const hasMeta = Reflect.hasMetadata(rpc.NAMESPACE.REQ, target);
     let error: Error;
     const context = new Context(ctx);
-    await this.sync('context:start', context, target);
     try {
+      await this.sync('context:start', context, target);
       if (!hasMiddleware) {
         if (!hasMeta) {
           ctx.body = await injector[req.method](...req.parameters);
