@@ -85,15 +85,15 @@ export const Swagger = {
 }
 
 export class ParameterMetadata {
-  private readonly parameters: ((req: ContextRequestType) => any)[] = [];
-  set(index: number, callback: (req: ContextRequestType) => any) {
+  private readonly parameters: ((ctx: ProviderContext) => any)[] = [];
+  set(index: number, callback: (ctx: ProviderContext) => any) {
     this.parameters[index] = callback;
     return this;
   }
-  exec(req: ContextRequestType) {
+  exec(ctx: ProviderContext) {
     return this.parameters.map((fn, index) => {
-      if (typeof fn === 'function') return fn(req);
-      return req.parameters[index];
+      if (typeof fn === 'function') return fn(ctx);
+      return ctx.req.parameters[index];
     });
   }
 
@@ -112,18 +112,18 @@ export class ParameterMetadata {
 type AttachmentItemType = ContextRequestType['attachments'][keyof ContextRequestType['attachments']];
 
 export const ctx = {
-  id: setParameterMetaData<ContextRequestType['requestId']>(req => req.requestId),
-  dv: setParameterMetaData<ContextRequestType['dubboVersion']>(req => req.dubboVersion),
-  name: setParameterMetaData<ContextRequestType['interfaceName']>(req => req.interfaceName),
-  method: setParameterMetaData<ContextRequestType['method']>(req => req.method),
-  version: setParameterMetaData<ContextRequestType['interfaceVersion']>(req => req.interfaceVersion),
-  attachments: setParameterMetaData<ContextRequestType['attachments']>(req => req.attachments),
-  attachment: setFunctionalParameterMetaData<AttachmentItemType>((req, key: keyof ContextRequestType['attachments']) => req.attachments[key]),
-  params: setParameterMetaData<ContextRequestType['parameters']>(req => req.parameters),
-  param: setFunctionalParameterMetaData((req, index: number) => req.parameters[index]),
+  id: setParameterMetaData<ContextRequestType['requestId']>(ctx => ctx.req.requestId),
+  dv: setParameterMetaData<ContextRequestType['dubboVersion']>(ctx => ctx.req.dubboVersion),
+  name: setParameterMetaData<ContextRequestType['interfaceName']>(ctx => ctx.req.interfaceName),
+  method: setParameterMetaData<ContextRequestType['method']>(ctx => ctx.req.method),
+  version: setParameterMetaData<ContextRequestType['interfaceVersion']>(ctx => ctx.req.interfaceVersion),
+  attachments: setParameterMetaData<ContextRequestType['attachments']>(ctx => ctx.req.attachments),
+  attachment: setFunctionalParameterMetaData<AttachmentItemType>((ctx, key: keyof ContextRequestType['attachments']) => ctx.req.attachments[key]),
+  params: setParameterMetaData<ContextRequestType['parameters']>(ctx => ctx.req.parameters),
+  param: setFunctionalParameterMetaData((ctx, index: number) => ctx.req.parameters[index]),
 }
 
-export function setParameterMetaData<T = any>(callback: (req: ContextRequestType) => T): ParameterDecorator {
+export function setParameterMetaData<T = any>(callback: (ctx: ProviderContext) => T): ParameterDecorator {
   return (target, property, index) => {
     const clazz = target.constructor.prototype[property];
     const meta = ParameterMetadata.bind(clazz);
@@ -131,12 +131,12 @@ export function setParameterMetaData<T = any>(callback: (req: ContextRequestType
   }
 }
 
-export function setFunctionalParameterMetaData<T = any>(callback: (req: ContextRequestType, ...args: any[]) => T) {
+export function setFunctionalParameterMetaData<T = any>(callback: (ctx: ProviderContext, ...args: any[]) => T) {
   return (...args: any[]): ParameterDecorator => {
     return (target, property, index) => {
       const clazz = target.constructor.prototype[property];
       const meta = ParameterMetadata.bind(clazz);
-      meta.set(index, (req) => callback(req, ...args));
+      meta.set(index, (ctx) => callback(ctx, ...args));
     }
   }
 }
