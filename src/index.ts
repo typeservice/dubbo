@@ -176,6 +176,7 @@ export default class Dubbo extends WorkerFactory {
     }
     const hasMiddleware = Reflect.hasMetadata(rpc.NAMESPACE.MIDDLEWARE, target);
     const hasMeta = Reflect.hasMetadata(rpc.NAMESPACE.REQ, target);
+    await this.sync('context', ctx);
     if (!hasMiddleware) {
       if (!hasMeta) {
         ctx.body = await injector[req.method](...req.parameters);
