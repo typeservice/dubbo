@@ -187,7 +187,8 @@ export default class Dubbo extends WorkerFactory {
           ctx.body = await injector[req.method](...req.parameters);
         } else {
           const meta = Reflect.getMetadata(rpc.NAMESPACE.REQ, target) as rpc.ParameterMetadata;
-          ctx.body = await injector[req.method](...meta.exec(context));
+          const args = await meta.exec(context);
+          ctx.body = await injector[req.method](...args);
         }
       } else {
         const middlewareMetadata = Reflect.getMetadata(rpc.NAMESPACE.MIDDLEWARE, target) as rpc.MiddlewareMetadata;
@@ -196,7 +197,8 @@ export default class Dubbo extends WorkerFactory {
             ctx.body = await injector[req.method](...req.parameters);
           } else {
             const meta = Reflect.getMetadata(rpc.NAMESPACE.REQ, target) as rpc.ParameterMetadata;
-            ctx.body = await injector[req.method](...meta.exec(context));
+            const args = await meta.exec(context);
+            ctx.body = await injector[req.method](...args);
           }
           await next();
         });

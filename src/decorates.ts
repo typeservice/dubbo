@@ -92,10 +92,10 @@ export class ParameterMetadata {
     return this;
   }
   exec(ctx: Context) {
-    return this.parameters.map((fn, index) => {
-      if (typeof fn === 'function') return fn(ctx);
-      return ctx.req.parameters[index];
-    });
+    return Promise.all(this.parameters.map((fn, index) => {
+      if (typeof fn === 'function') return Promise.resolve(fn(ctx));
+      return Promise.resolve(ctx.req.parameters[index]);
+    }));
   }
 
   static bind(target: Object) {
