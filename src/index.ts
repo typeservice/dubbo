@@ -208,9 +208,7 @@ export default class Dubbo extends WorkerFactory {
       ctx.body = e.message;
       ctx.status = e.code || PROVIDER_CONTEXT_STATUS.SERVICE_ERROR;
     }
-    await Promise.all([
-      context.sync('stop', error),
-      this.sync('context:stop', context, error)
-    ]);
+    await context.sync('stop', error);
+    await this.sync('context:stop', context, error);
   }
 }
