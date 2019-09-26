@@ -1,6 +1,6 @@
 {
   "name": "@typeservice/dubbo",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "A worker frameworker using dubbo for typeservice.",
   "main": "dist/index.js",
   "repository": {

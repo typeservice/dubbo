@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { ProviderServiceChunkMethodParametersSchema, ProviderContext } from 'dubbo.ts';
 import { ComposeMiddleware, Compose } from '@typeservice/core';
+import Context from './context';
 
 type ContextRequestType = ProviderContext['req'];
 
@@ -85,12 +86,12 @@ export const Swagger = {
 }
 
 export class ParameterMetadata {
-  private readonly parameters: ((ctx: ProviderContext) => any)[] = [];
-  set(index: number, callback: (ctx: ProviderContext) => any) {
+  private readonly parameters: ((ctx: Context) => any)[] = [];
+  set(index: number, callback: (ctx: Context) => any) {
     this.parameters[index] = callback;
     return this;
   }
-  exec(ctx: ProviderContext) {
+  exec(ctx: Context) {
     return this.parameters.map((fn, index) => {
       if (typeof fn === 'function') return fn(ctx);
       return ctx.req.parameters[index];
@@ -123,7 +124,7 @@ export const ctx = {
   param: setFunctionalParameterMetaData((ctx, index: number) => ctx.req.parameters[index]),
 }
 
-export function setParameterMetaData<T = any>(callback: (ctx: ProviderContext) => T): ParameterDecorator {
+export function setParameterMetaData<T = any>(callback: (ctx: Context) => T): ParameterDecorator {
   return (target, property, index) => {
     const clazz = target.constructor.prototype[property];
     const meta = ParameterMetadata.bind(clazz);
@@ -131,7 +132,7 @@ export function setParameterMetaData<T = any>(callback: (ctx: ProviderContext) =
   }
 }
 
-export function setFunctionalParameterMetaData<T = any>(callback: (ctx: ProviderContext, ...args: any[]) => T) {
+export function setFunctionalParameterMetaData<T = any>(callback: (ctx: Context, ...args: any[]) => T) {
   return (...args: any[]): ParameterDecorator => {
     return (target, property, index) => {
       const clazz = target.constructor.prototype[property];
@@ -141,7 +142,7 @@ export function setFunctionalParameterMetaData<T = any>(callback: (ctx: Provider
   }
 }
 
-export class MiddlewareMetadata<T extends ProviderContext = ProviderContext>{
+export class MiddlewareMetadata<T extends Context = Context>{
   private readonly stacks: ComposeMiddleware<T>[] = [];
   use(...args: ComposeMiddleware<T>[]) {
     this.stacks.unshift(...args);
@@ -154,7 +155,7 @@ export class MiddlewareMetadata<T extends ProviderContext = ProviderContext>{
   }
 }
 
-export function Middleware<T extends ProviderContext = ProviderContext>(...args: ComposeMiddleware<T>[]): MethodDecorator {
+export function Middleware<T extends Context = Context>(...args: ComposeMiddleware<T>[]): MethodDecorator {
   return (target, property, descriptor) => {
     const clazz = descriptor.value;
     if (!Reflect.hasMetadata(NAMESPACE.MIDDLEWARE, clazz)) Reflect.defineMetadata(NAMESPACE.MIDDLEWARE, new MiddlewareMetadata<T>(), clazz);

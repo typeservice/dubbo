@@ -3,6 +3,7 @@ import * as globby from 'globby';
 import { Container, interfaces } from 'inversify';
 import { WorkerFactory, Logger, ProcessException, RequireFileWithDefault } from '@typeservice/core';
 import * as rpc from './decorates';
+import Context from './context';
 import { 
   Provider, 
   Consumer, 
@@ -34,6 +35,7 @@ export type DubboOptions = {
 
 export {
   rpc,
+  Context,
 }
 
 export default class Dubbo extends WorkerFactory {
@@ -176,25 +178,34 @@ export default class Dubbo extends WorkerFactory {
     }
     const hasMiddleware = Reflect.hasMetadata(rpc.NAMESPACE.MIDDLEWARE, target);
     const hasMeta = Reflect.hasMetadata(rpc.NAMESPACE.REQ, target);
-    await this.sync('context', ctx);
-    if (!hasMiddleware) {
-      if (!hasMeta) {
-        ctx.body = await injector[req.method](...req.parameters);
-      } else {
-        const meta = Reflect.getMetadata(rpc.NAMESPACE.REQ, target) as rpc.ParameterMetadata;
-        ctx.body = await injector[req.method](...meta.exec(ctx));
-      }
-    } else {
-      const middlewareMetadata = Reflect.getMetadata(rpc.NAMESPACE.MIDDLEWARE, target) as rpc.MiddlewareMetadata;
-      await middlewareMetadata.exec(ctx, async (ctx, next) => {
+    let error: Error;
+    const context = new Context(ctx);
+    await this.sync('context:start', context);
+    try {
+      if (!hasMiddleware) {
         if (!hasMeta) {
           ctx.body = await injector[req.method](...req.parameters);
         } else {
           const meta = Reflect.getMetadata(rpc.NAMESPACE.REQ, target) as rpc.ParameterMetadata;
-          ctx.body = await injector[req.method](...meta.exec(ctx));
+          ctx.body = await injector[req.method](...meta.exec(context));
         }
-        await next();
-      });
-    }
+      } else {
+        const middlewareMetadata = Reflect.getMetadata(rpc.NAMESPACE.MIDDLEWARE, target) as rpc.MiddlewareMetadata;
+        await middlewareMetadata.exec(context, async (ctx, next) => {
+          if (!hasMeta) {
+            ctx.body = await injector[req.method](...req.parameters);
+          } else {
+            const meta = Reflect.getMetadata(rpc.NAMESPACE.REQ, target) as rpc.ParameterMetadata;
+            ctx.body = await injector[req.method](...meta.exec(context));
+          }
+          await next();
+        });
+      }
+    } catch(e) { error = e; }
+    await Promise.all([
+      context.sync('stop'),
+      this.sync('context:stop', context)
+    ]);
+    if (error) throw error;
   }
 }
