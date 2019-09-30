@@ -120,18 +120,20 @@ export default class Dubbo extends WorkerFactory {
         swaggers.push(tmp);
       }
     }
-    this.provider.addService(name, {
-      interface: interfacename,
-      revision: this.version || version || '0.0.0',
-      version:  version || '0.0.0',
-      group: group,
-      methods: methods,
-      delay: deplay || -1,
-      retries: retries || 2,
-      timeout: timeout || 60000,
-      description,
-      parameters: swaggers,
-    })
+    if (interfacename && name && methods.length) {
+      this.provider.addService(name, {
+        interface: interfacename,
+        revision: this.version || version || '0.0.0',
+        version:  version || '0.0.0',
+        group: group,
+        methods: methods,
+        delay: deplay || -1,
+        retries: retries || 2,
+        timeout: timeout || 60000,
+        description,
+        parameters: swaggers,
+      })
+    }
     return this.container.bind<T>(name).to(target);
   }
 
